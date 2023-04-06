@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>HTML Editor for TagSpaces</title>
+    <link rel="stylesheet" href="../libs/bootstrap5/bootstrap.min.css" />
+    <link rel="stylesheet" href="libs/summernote/summernote-bs5.css" />
+    <link rel="stylesheet" href="../common/common.css" />
+    <style>
+      body {
+        overflow: hidden;
+        padding: 0 !important;
+      }
+
+      .note-editor.note-frame {
+        border: none !important;
+        box-shadow: none !important;
+        font-size: var(--default-text-size);
+        color: var(--default-text-color) 1;
+        background-color: var(--default-background-color);
+      }
+
+      .note-editor {
+        border-width: 0 !important;
+        height: 90%;
+      }
+
+      .note-codable {
+        overflow: auto;
+      }
+
+      .note-editable {
+        overflow: auto;
+      }
+
+      .note-editing-area h1 {
+        font-size: 22px;
+      }
+
+      .note-editing-area h2 {
+        font-size: 20px;
+      }
+
+      .note-editing-area h3 {
+        font-size: 18px;
+      }
+
+      .note-editing-area h4 {
+        font-size: 16px;
+      }
+
+      .note-editing-area h5 {
+        font-size: 14px;
+      }
+
+      .note-editing-area h6 {
+        font-size: 12px;
+        font-weight: bold;
+      }
+    </style>
+    <script src="../libs/jquery/dist/jquery.min.js"></script>
+    <script src="../libs/bootstrap5/bootstrap.bundle.min.js"></script>
+    <script src="libs/summernote/summernote-bs5.min.js"></script>
+    <script src="libs/summernote-tagspaces-extensions.js"></script>
+    <script src="../libs/dompurify/dist/purify.min.js"></script>
+    <script src="../libs/i18next/i18next.min.js"></script>
+    <script src="../common/common.js"></script>
+    <script src="main.js"></script>
+    <script>
+      const filePath = getParameterByName('file');
+      let locale = getParameterByName('locale');
+      if (locale === 'en') {
+        locale = 'en_US';
+      }
+
+      document.addEventListener('readystatechange', () => {
+        if (document.readyState === 'complete') {
+          insertAboutDialog(
+            'https://docs.tagspaces.org/extensions/html-editor'
+          );
+
+          // insertPrintMenuItem();
+
+          initI18N(locale, 'ns.extension.json');
+
+          sendMessageToHost({ command: 'loadDefaultTextContent' });
+
+          // Handling settings
+          let extSettings = loadExtSettings('htmlEditorSettings');
+
+          function saveSettings() {
+            saveExtSettings('htmlEditorSettings', { zoomLevel });
+          }
+
+          let zoomLevel = 100;
+          if (extSettings && extSettings.zoomLevel) {
+            if (extSettings.zoomLevel >= 30 && extSettings.zoomLevel <= 500) {
+              zoomLevel = extSettings.zoomLevel;
+            }
+            document.getElementById('documentContent').style.zoom =
+              zoomLevel + '%';
+          }
+          saveSettings();
+        }
+      });
+
+      function displayDocument(zipFile, filePath) {
+        // DOMPurify.sanitize(htmlstr);
+        const documentContent = document.getElementById('documentContent');
+        documentContent.innerHTML = '';
+
+        handleLinks(documentContent);
+      }
+    </script>
+  </head>
+  <body>
+    <div id="documentContent"></div>
+    <div id="aboutDialogPlaceholder"></div>
+    <div id="extFabMenu" class="btn-group dropup-center dropup">
+      <button
+        type="button"
+        class="btn btn-primary btn-lg"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+      >
+        <svg
+          class="bi"
+          width="24"
+          height="24"
+          focusable="false"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+          ></path>
+        </svg>
+      </button>
+      <ul class="dropdown-menu">
+        <li id="printMenuItemPlaceholder"></li>
+        <!--li><hr class="dropdown-divider" /></li-->
+        <li id="aboutMenuItemPlaceholder"></li>
+      </ul>
+    </div>
+  </body>
+</html>

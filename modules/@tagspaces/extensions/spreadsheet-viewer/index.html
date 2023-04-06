@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>Spreadsheet Viewer for TagSpaces</title>
+    <link rel="stylesheet" href="../libs/bootstrap5/bootstrap.min.css" />
+    <link rel="stylesheet" href="../common/common.css" />
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        overflow: overlay;
+      }
+
+      #documentContent {
+        height: 100%;
+        font-size: var(--default-text-size);
+        color: var(--text-color);
+        background-color: var(--background-color);
+        margin: 10px;
+      }
+
+      #documentContent table {
+        min-width: 100%;
+      }
+
+      #documentContent table th {
+        font-weight: bold;
+      }
+
+      #documentContent table,
+      #documentContent table th,
+      #documentContent table td {
+        height: 25px;
+        border: 1px solid gray;
+        padding: 3px;
+        color: var(--text-color);
+        background-color: var(--background-color);
+      }
+    </style>
+    <script src="libs/sheetjs/xlsx.full.min.js"></script>
+    <script src="../libs/mark.js/mark.min.js"></script>
+    <script src="../libs/dompurify/dist/purify.min.js"></script>
+    <script src="../libs/bootstrap5/bootstrap.bundle.min.js"></script>
+    <script src="../libs/i18next/i18next.min.js"></script>
+    <script src="../common/common.js"></script>
+    <script>
+      const filePath = getParameterByName('file');
+      let locale = getParameterByName('locale');
+      if (locale === 'en') {
+        locale = 'en_US';
+      }
+
+      document.addEventListener('readystatechange', () => {
+        if (document.readyState === 'complete') {
+          insertAboutDialog(
+            'https://docs.tagspaces.org/extensions/spreadsheet-viewer'
+          );
+          insertPrintMenuItem();
+          insertZoomContentMenuItem();
+          insertToggleFindMenuItem();
+          insertExportAsHTMLFunctionality();
+
+          initI18N(locale, 'ns.extension.json');
+
+          getFileContentPromise(filePath, 'arraybuffer').then(response => {
+            const byteArray = new Uint8Array(response);
+            displayDocument(XLSX.read(byteArray, { type: 'array' }));
+          });
+
+          // Handling settings
+          let extSettings = loadExtSettings('spreadsheetViewerSettings');
+
+          function saveSettings() {
+            saveExtSettings('spreadsheetViewerSettings', { zoomLevel });
+          }
+
+          let zoomLevel = 100;
+          if (extSettings && extSettings.zoomLevel) {
+            if (extSettings.zoomLevel >= 30 && extSettings.zoomLevel <= 500) {
+              zoomLevel = extSettings.zoomLevel;
+            }
+            document.getElementById('documentContent').style.zoom =
+              zoomLevel + '%';
+          }
+          saveSettings();
+
+          document
+            .getElementById('zoomInButton')
+            .addEventListener('click', e => {
+              e.stopPropagation();
+              zoomLevel = zoomLevel + 10;
+              if (zoomLevel >= 500) {
+                zoomLevel = 500;
+              }
+              saveSettings();
+              document.getElementById('documentContent').style.zoom =
+                zoomLevel + '%';
+            });
+
+          document
+            .getElementById('zoomOutButton')
+            .addEventListener('click', e => {
+              e.stopPropagation();
+              zoomLevel = zoomLevel - 10;
+              if (zoomLevel < 30) {
+                zoomLevel = 30;
+              }
+              saveSettings();
+              document.getElementById('documentContent').style.zoom =
+                zoomLevel + '%';
+            });
+
+          document
+            .getElementById('zoomResetButton')
+            .addEventListener('click', e => {
+              zoomLevel = 100;
+              saveSettings();
+              document.getElementById('documentContent').style.zoom =
+                zoomLevel + '%';
+            });
+        }
+      });
+
+      function displayDocument(wb) {
+        const documentContent = document.getElementById('documentContent');
+        documentContent.innerHTML = '';
+        wb.SheetNames.forEach(sheetName => {
+          const htmlstr = XLSX.utils.sheet_to_html(wb.Sheets[sheetName], {
+            editable: false
+          });
+          let sheetHTML = `
+            <h2>${sheetName}</h2>
+            ${htmlstr}
+            <br />
+          `;
+          documentContent.innerHTML += DOMPurify.sanitize(sheetHTML);
+        });
+
+        const allTables = documentContent.querySelectorAll('table');
+        allTables.forEach(table => {
+          // adding some bootstrap classes
+          table.classList = 'table table-striped table-hover';
+        });
+
+        handleLinks(documentContent);
+
+        initFindToolbar();
+      }
+    </script>
+  </head>
+  <body>
+    <div id="findToolbarPlaceholder"></div>
+    <div id="documentContent"></div>
+    <div id="aboutDialogPlaceholder"></div>
+    <div id="extFabMenu" class="btn-group dropup-center dropup">
+      <button
+        type="button"
+        class="btn btn-primary btn-lg"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+      >
+        <svg
+          class="bi"
+          width="24"
+          height="24"
+          focusable="false"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+          ></path>
+        </svg>
+      </button>
+      <ul class="dropdown-menu">
+        <li id="zoomContentMenuItemPlaceholder"></li>
+        <li><hr class="dropdown-divider" /></li>
+        <li id="exportAsHTMLMenuItemPlaceholder"></li>
+        <li id="toggleFindMenuItemPlaceholder"></li>
+        <li id="printMenuItemPlaceholder"></li>
+        <li><hr class="dropdown-divider" /></li>
+        <li id="aboutMenuItemPlaceholder"></li>
+      </ul>
+    </div>
+  </body>
+</html>

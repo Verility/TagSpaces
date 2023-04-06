@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>Archive Viewer for TagSpaces</title>
+    <link rel="stylesheet" href="../libs/bootstrap5/bootstrap.min.css" />
+    <link rel="stylesheet" href="../common/common.css" />
+    <style>
+      body {
+        overflow: auto;
+        overflow: overlay;
+      }
+
+      #documentContent {
+        padding: 10px;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+    <script src="../libs/jszip/jszip.min.js"></script>
+    <script src="../libs/jszip-utils/jszip-utils.min.js"></script>
+    <script src="../libs/mark.js/mark.min.js"></script>
+    <script src="../libs/dompurify/dist/purify.min.js"></script>
+    <script src="../libs/bootstrap5/bootstrap.bundle.min.js"></script>
+    <script src="../libs/i18next/i18next.min.js"></script>
+    <script src="../common/common.js"></script>
+    <script>
+      const filePath = getParameterByName('file');
+      let locale = getParameterByName('locale');
+      if (locale === 'en') {
+        locale = 'en_US';
+      }
+      const maxPreviewSize = 1024 * 3 || {}; // 3kb limit for preview
+      let filePreviewModal;
+
+      document.addEventListener('readystatechange', () => {
+        if (document.readyState === 'complete') {
+          insertAboutDialog(
+            'https://docs.tagspaces.org/extensions/archive-viewer'
+          );
+
+          insertLoadingAnimation();
+          insertPrintMenuItem();
+          insertToggleFindMenuItem();
+          insertZoomContentMenuItem();
+
+          initI18N(locale, 'ns.extension.json');
+
+          filePreviewModal = new bootstrap.Modal('#filePreviewModal', {});
+
+          JSZipUtils.getBinaryContent(filePath, (err, data) => {
+            if (err) {
+              throw err; // or handle err
+            }
+            JSZip.loadAsync(data).then(data => {
+              displayDocument(data, filePath);
+            });
+          });
+
+          // Handling settings
+          let extSettings = loadExtSettings('archiveViewerSettings');
+
+          function saveSettings() {
+            saveExtSettings('archiveViewerSettings', { zoomLevel });
+          }
+
+          let zoomLevel = 100;
+          if (extSettings && extSettings.zoomLevel) {
+            if (extSettings.zoomLevel >= 30 && extSettings.zoomLevel <= 500) {
+              zoomLevel = extSettings.zoomLevel;
+            }
+            document.getElementById('documentContent').style.zoom =
+              zoomLevel + '%';
+          }
+          saveSettings();
+
+          document
+            .getElementById('zoomInButton')
+            .addEventListener('click', e => {
+              e.stopPropagation();
+              zoomLevel = zoomLevel + 10;
+              if (zoomLevel >= 500) {
+                zoomLevel = 500;
+              }
+              saveSettings();
+              document.getElementById('documentContent').style.zoom =
+                zoomLevel + '%';
+            });
+
+          document
+            .getElementById('zoomOutButton')
+            .addEventListener('click', e => {
+              e.stopPropagation();
+              zoomLevel = zoomLevel - 10;
+              if (zoomLevel < 30) {
+                zoomLevel = 30;
+              }
+              saveSettings();
+              document.getElementById('documentContent').style.zoom =
+                zoomLevel + '%';
+            });
+
+          document
+            .getElementById('zoomResetButton')
+            .addEventListener('click', e => {
+              zoomLevel = 100;
+              saveSettings();
+              document.getElementById('documentContent').style.zoom =
+                zoomLevel + '%';
+            });
+        }
+      });
+
+      function displayDocument(zipFile, filePath) {
+        const documentContent = document.getElementById('documentContent');
+        documentContent.innerHTML = '';
+
+        handleLinks(documentContent);
+
+        if (
+          !!Object.keys(zipFile.files) &&
+          (typeof zipFile !== 'function' || zipFile === null)
+        ) {
+          let fileCounter = 0;
+          let tableHTML = `
+          <table class="table table-striped table-hover">
+            <thead>
+              <tr>
+                <th scope="col" style="min-width: 30px">#</th>
+                <th scope="col" style="width: 100%">Filepath</th>
+              </tr>
+            </thead>
+            <tbody>`;
+          for (const fileName in zipFile.files) {
+            if (zipFile.files[fileName].dir === true) {
+              continue;
+            }
+            fileCounter++;
+            tableHTML += `
+              <tr>
+                <th scope="row">${fileCounter}</th>
+                <td><a href="#" title="${fileName}" data-zipfile="${fileName}">${fileName}</a></td>
+              </tr>
+            `;
+          }
+          tableHTML += `</tbody></table>`;
+          documentContent.innerHTML = DOMPurify.sanitize(tableHTML);
+        } else {
+          documentContent.innerHTML = 'ZIP file is empty';
+          // throw new TypeError('Object.keys called on non-object');
+        }
+
+        hideLoadingAnimation();
+
+        function showContentFilePreviewDialog(filePath) {
+          showLoadingAnimation();
+          const containFile = zipFile.files[filePath];
+          containFile.options.compression = 'STORE';
+          containFile.async('text').then(blob => {
+            let previewText = blob;
+            if (previewText.length > maxPreviewSize) {
+              previewText = previewText.substring(maxPreviewSize);
+            }
+            document.getElementById(
+              'filePreview'
+            ).innerText = DOMPurify.sanitize(previewText);
+            hideLoadingAnimation();
+          });
+
+          document.getElementById('filePathInput').value = filePath;
+          filePreviewModal.show();
+        }
+
+        function handleZIPLinks() {
+          const allZIPLinks = document.querySelectorAll('[data-zipfile]');
+          allZIPLinks.forEach(link => {
+            let currentSrc = link.dataset.zipfile;
+            if (currentSrc.length > 0) {
+              link.addEventListener('click', e => {
+                e.preventDefault();
+                showContentFilePreviewDialog(currentSrc);
+              });
+            }
+          });
+        }
+
+        handleZIPLinks();
+
+        initFindToolbar();
+      }
+    </script>
+  </head>
+  <body>
+    <div id="findToolbarPlaceholder"></div>
+    <div id="loadingAnimationPlaceholder"></div>
+    <div id="documentContent"></div>
+    <div id="aboutDialogPlaceholder"></div>
+    <div id="extFabMenu" class="btn-group dropup-center dropup">
+      <button
+        type="button"
+        class="btn btn-primary btn-lg"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+      >
+        <svg
+          class="bi"
+          width="24"
+          height="24"
+          focusable="false"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+          ></path>
+        </svg>
+      </button>
+      <ul class="dropdown-menu">
+        <li id="zoomContentMenuItemPlaceholder"></li>
+        <li><hr class="dropdown-divider" /></li>
+        <li id="toggleFindMenuItemPlaceholder"></li>
+        <li id="printMenuItemPlaceholder"></li>
+        <li><hr class="dropdown-divider" /></li>
+        <li id="aboutMenuItemPlaceholder"></li>
+      </ul>
+    </div>
+    <div
+      class="modal fade"
+      id="filePreviewModal"
+      tabindex="-1"
+      aria-labelledby="filePreviewModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5">
+              <span data-i18n="fileContentPreview" />
+            </h1>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <input
+              id="filePathInput"
+              type="text"
+              class="form-control"
+              value="file path in ZIP file"
+              title="file path in ZIP file"
+              aria-label="readonly input"
+              readonly
+            />
+            <pre
+              id="filePreview"
+              style="white-space: pre-wrap; min-height: 200px; max-height: 500px; border: 1px solid gray; margin-top: 10px; border-radius: 5px; padding: 10px; overflow: overlay;"
+              title="Showing the first 3kb of the file"
+            ></pre>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-primary"
+              data-bs-dismiss="modal"
+            >
+              <span data-i18n="ok" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

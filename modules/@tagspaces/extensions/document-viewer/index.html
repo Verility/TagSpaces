@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>Document Viewer for TagSpaces</title>
+    <link rel="stylesheet" href="../libs/bootstrap5/bootstrap.min.css" />
+    <link rel="stylesheet" href="../common/common.css" />
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        overflow: overlay;
+      }
+      #documentContent {
+        height: 100%;
+        padding: 15px;
+        font-size: var(--default-text-size);
+        color: var(--default-text-color);
+        background-color: white; /* var(--default-background-color) */
+      }
+      #documentContent img {
+        max-width: 100%;
+      }
+    </style>
+    <script src="../libs/jszip/jszip.min.js"></script>
+    <script src="../libs/jszip-utils/jszip-utils.min.js"></script>
+    <script src="libs/mammoth/mammoth.browser.js"></script>
+    <script src="../libs/mark.js/mark.min.js"></script>
+    <script src="../libs/dompurify/dist/purify.min.js"></script>
+    <script src="../libs/bootstrap5/bootstrap.bundle.min.js"></script>
+    <script src="../libs/i18next/i18next.min.js"></script>
+    <script src="../common/common.js"></script>
+    <script>
+      const filePath = getParameterByName('file');
+      let locale = getParameterByName('locale');
+      if (locale === 'en') {
+        locale = 'en_US';
+      }
+
+      document.addEventListener('readystatechange', () => {
+        if (document.readyState === 'complete') {
+          insertAboutDialog(
+            'https://docs.tagspaces.org/extensions/document-viewer'
+          );
+
+          insertPrintMenuItem();
+          insertToggleFindMenuItem();
+          insertZoomContentMenuItem();
+          insertExportAsHTMLFunctionality();
+
+          initI18N(locale, 'ns.extension.json');
+
+          const options = {
+            convertImage: mammoth.images.imgElement(image => {
+              return image.read('base64').then(imageBuffer => {
+                return {
+                  src: 'data:' + image.contentType + ';base64,' + imageBuffer
+                };
+              });
+            }),
+            styleMap: [
+              "p[style-name='Section Title'] => h1:fresh",
+              "p[style-name='Subsection Title'] => h2:fresh"
+            ]
+          };
+
+          JSZipUtils.getBinaryContent(filePath, (err, data) => {
+            if (err) {
+              throw err; // or handle err
+            }
+            mammoth
+              .convertToHtml({ arrayBuffer: data }, options)
+              .then(result => {
+                // console.log(result);
+                // const html = result.value; // The generated HTML
+                // const messages = result.messages; // Any messages, such as warnings during conversion
+                displayDocument(result);
+              })
+              .done();
+          });
+
+          const documentContent = document.getElementById('documentContent');
+
+          // Handling settings
+          let extSettings = loadExtSettings('documentViewerSettings');
+
+          function saveSettings() {
+            saveExtSettings('documentViewerSettings', { zoomLevel });
+          }
+
+          let zoomLevel = 100;
+          if (extSettings && extSettings.zoomLevel) {
+            if (extSettings.zoomLevel >= 30 && extSettings.zoomLevel <= 500) {
+              zoomLevel = extSettings.zoomLevel;
+            }
+            documentContent.style.zoom = zoomLevel + '%';
+          }
+          saveSettings();
+
+          document
+            .getElementById('zoomInButton')
+            .addEventListener('click', e => {
+              e.stopPropagation();
+              zoomLevel = zoomLevel + 10;
+              if (zoomLevel >= 500) {
+                zoomLevel = 500;
+              }
+              saveSettings();
+              documentContent.style.zoom = zoomLevel + '%';
+            });
+
+          document
+            .getElementById('zoomOutButton')
+            .addEventListener('click', e => {
+              e.stopPropagation();
+              zoomLevel = zoomLevel - 10;
+              if (zoomLevel < 30) {
+                zoomLevel = 30;
+              }
+              saveSettings();
+              documentContent.style.zoom = zoomLevel + '%';
+            });
+
+          document
+            .getElementById('zoomResetButton')
+            .addEventListener('click', e => {
+              zoomLevel = 100;
+              saveSettings();
+              documentContent.style.zoom = zoomLevel + '%';
+            });
+        }
+      });
+
+      function displayDocument(result) {
+        const content = result.value;
+        // const warrningMessage = result.message;
+        const documentContent = document.getElementById('documentContent');
+        documentContent.innerHTML = DOMPurify.sanitize(content);
+
+        handleLinks(documentContent);
+
+        initFindToolbar();
+      }
+    </script>
+  </head>
+  <body>
+    <div id="findToolbarPlaceholder"></div>
+    <div id="documentContent"></div>
+    <div id="aboutDialogPlaceholder"></div>
+    <div id="extFabMenu" class="btn-group dropup-center dropup">
+      <button
+        type="button"
+        class="btn btn-primary btn-lg"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+      >
+        <svg
+          class="bi"
+          width="24"
+          height="24"
+          focusable="false"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+          ></path>
+        </svg>
+      </button>
+      <ul class="dropdown-menu">
+        <li id="zoomContentMenuItemPlaceholder"></li>
+        <li><hr class="dropdown-divider" /></li>
+        <li id="exportAsHTMLMenuItemPlaceholder"></li>
+        <li id="toggleFindMenuItemPlaceholder"></li>
+        <li id="printMenuItemPlaceholder"></li>
+        <li><hr class="dropdown-divider" /></li>
+        <li id="aboutMenuItemPlaceholder"></li>
+      </ul>
+    </div>
+  </body>
+</html>

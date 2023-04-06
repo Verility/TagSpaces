@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html style="margin: 0; padding: 0; height: 100%;">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <script src="../common/common.js"></script>
+    <link rel="stylesheet" href="../libs/bootstrap5/bootstrap.min.css" />
+    <link rel="stylesheet" href="../common/common.css" />
+    <script src="../libs/bootstrap5/bootstrap.bundle.min.js"></script>
+    <script src="../libs/i18next/i18next.min.js"></script>
+    <script>
+      const filePath = getParameterByName('file');
+      let locale = getParameterByName('locale');
+      if (locale === 'en') {
+        locale = 'en_US';
+      }
+      document.addEventListener('readystatechange', () => {
+        if (document.readyState === 'complete') {
+          const pdfViewer = document.getElementById('pdfviewer');
+          pdfViewer.setAttribute(
+            'src',
+            'generic/web/viewer.html?file=' + encodeURIComponent(filePath)
+          );
+
+          insertAboutDialog('https://docs.tagspaces.org/extensions/pdf-viewer');
+
+          initI18N(locale, 'ns.extension.json');
+        }
+      });
+    </script>
+  </head>
+
+  <body style="margin: 0; padding: 0; height: 100%; overflow: hidden;">
+    <iframe
+      id="pdfviewer"
+      style="width: 100%; border: 0; height: 100%;"
+    ></iframe>
+    <div id="aboutDialogPlaceholder"></div>
+    <div id="extFabMenu" class="btn-group dropup-center dropup">
+      <button
+        type="button"
+        class="btn btn-primary btn-lg"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+      >
+        <svg
+          class="bi"
+          width="24"
+          height="24"
+          focusable="false"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+          ></path>
+        </svg>
+      </button>
+      <ul class="dropdown-menu">
+        <!-- <li id="printMenuItemPlaceholder"></li>
+        <li><hr class="dropdown-divider" /></li> -->
+        <li id="aboutMenuItemPlaceholder"></li>
+      </ul>
+    </div>
+  </body>
+</html>

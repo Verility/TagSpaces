@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>URL Viewer for TagSpaces</title>
+    <link rel="stylesheet" href="../libs/bootstrap5/bootstrap.min.css" />
+    <link rel="stylesheet" href="../common/common.css" />
+    <style>
+      @media print {
+        #openURLButton {
+          display: none;
+        }
+      }
+    </style>
+    <script src="../libs/bootstrap5/bootstrap.bundle.min.js"></script>
+    <script src="../libs/i18next/i18next.min.js"></script>
+    <script src="../libs/dompurify/dist/purify.min.js"></script>
+    <script src="../common/common.js"></script>
+    <script>
+      const filePath = getParameterByName('file');
+      let locale = getParameterByName('locale');
+      if (locale === 'en') {
+        locale = 'en_US';
+      }
+
+      document.addEventListener('readystatechange', () => {
+        if (document.readyState === 'complete') {
+          getFileContentPromise(filePath, 'text')
+            .then(content => {
+              setContent(content);
+            })
+            .catch(e => {
+              console.log('Error getting content for: ' + filePath);
+            });
+
+          document.getElementById('copyURL').addEventListener('click', e => {
+            e.stopPropagation();
+            const promise = navigator.clipboard.writeText(
+              document.getElementById('urlInput').value
+            );
+            sendMessageToHost({
+              command: 'showAlertDialog',
+              title: 'Success',
+              message: 'URL copied to clipboard'
+            });
+          });
+
+          insertPrintMenuItem();
+
+          insertAboutDialog('https://docs.tagspaces.org/extensions/url-viewer');
+
+          initI18N(locale, 'ns.extension.json');
+        }
+      });
+
+      function setContent(content) {
+        const cleanedContent = DOMPurify.sanitize(content);
+
+        const urlBegin = 'URL=';
+        let url = cleanedContent.substring(
+          cleanedContent.indexOf(urlBegin) + urlBegin.length,
+          cleanedContent.length
+        );
+
+        const commentTag = 'COMMENT=';
+        let comment = cleanedContent.substring(
+          cleanedContent.indexOf(commentTag) + commentTag.length,
+          cleanedContent.length
+        );
+
+        // preventing the case the url is at the end of the file or line after the url lines
+        url = url + '\n';
+        url = url.substring(0, url.indexOf('\n'));
+
+        const openURLButton = document.getElementById('openURLButton');
+        openURLButton.addEventListener('click', e => {
+          e.preventDefault();
+          const msg = { command: 'openLinkExternally', link: url };
+          sendMessageToHost(msg);
+        });
+
+        const urlInput = document.getElementById('urlInput');
+        urlInput.setAttribute('value', url);
+
+        if (comment.startsWith('data:image')) {
+          const screenshotImg = document.getElementById('screenshotImg');
+          screenshotImg.setAttribute('src', comment);
+          screenshotImg.style['display'] = 'block';
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="aboutDialogPlaceholder"></div>
+    <div style="margin: 10px;">
+      <div class="input-group">
+        <button id="copyURL" type="button" class="btn btn-primary" title="Copy">
+          <svg width="24" height="24" class="bi">
+            <path
+              d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
+            ></path>
+          </svg>
+        </button>
+        <input
+          id="urlInput"
+          type="text"
+          class="form-control"
+          value="URL of the bookmark"
+          aria-label="readonly input example"
+          readonly
+        />
+        <button
+          type="button"
+          id="openURLButton"
+          title="Opens the URL in the default browser"
+          class="btn btn-primary btn-sm"
+        >
+          <svg width="24" height="24" class="bi">
+            <path
+              d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"
+            ></path>
+          </svg>
+          <span data-i18n="openURL" />
+        </button>
+      </div>
+      <img
+        id="screenshotImg"
+        title="Screenshot of the original web page"
+        style="margin-top: 10px; width: 100%; display: none; border-radius: 5px; border: 1px solid gray;"
+      />
+    </div>
+    <div id="extFabMenu" class="btn-group dropup-center dropup">
+      <button
+        type="button"
+        class="btn btn-primary  btn-lg"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+      >
+        <svg
+          class="bi"
+          width="24"
+          height="24"
+          focusable="false"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+          ></path>
+        </svg>
+      </button>
+      <ul class="dropdown-menu">
+        <li id="printMenuItemPlaceholder"></li>
+        <li><hr class="dropdown-divider" /></li>
+        <li id="aboutMenuItemPlaceholder"></li>
+      </ul>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,71 @@
+{
+  "name": "@tagspaces/md-editor",
+  "version": "1.0.11",
+  "description": "TagSpaces extension for editing notes in markdown format",
+  "homepage": "./",
+  "main": "build/index.js",
+  "files": [
+    "build/"
+  ],
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "build:dev": "react-app-rewired build",
+    "build:env": "npx env-cmd -f .env.development react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject",
+    "code-format": "npx prettier --write .",
+    "npmpack": "npx shx cp -rL build/** ../../app/node_modules/@tagspaces/extensions/md-editor/build",
+    "build:pack": "npm run build && npm run npmpack",
+    "pkg-publish": "npm publish --access public"
+  },
+  "keywords": [
+    "md",
+    "markdown",
+    "editor",
+    "tagspaces"
+  ],
+  "author": "TagSpaces UG <info@tagspaces.org> (https://www.tagspaces.org)",
+  "license": "MIT",
+  "dependencies": {
+    "@mui/icons-material": "^5.8.4",
+    "@mui/material": "^5.9.2",
+    "@tagspaces/tagspaces-md": "2.1.6",
+    "i18next": "^22.4.6",
+    "mark.js": "^8.11.1",
+    "markmap-common": "^0.14.2",
+    "markmap-lib": "^0.14.3",
+    "markmap-view": "^0.14.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-i18next": "^12.1.1"
+  },
+  "devDependencies": {
+    "@types/mark.js": "^8.11.8",
+    "@types/react": "^18.0.17",
+    "@types/react-dom": "^18.0.6",
+    "prettier": "^2.7.1",
+    "react-app-rewired": "^2.2.1",
+    "react-scripts": "^5.0.1",
+    "typescript": "^4.7.4"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tagspaces/tagspaces-extensions.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tagspaces/tagspaces-extensions/issues"
+  }
+}

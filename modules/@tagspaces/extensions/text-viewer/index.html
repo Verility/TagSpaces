@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>Generic Viewer for TagSpaces</title>
+    <link rel="stylesheet" href="../libs/bootstrap5/bootstrap.min.css" />
+    <link rel="stylesheet" href="../common/common.css" />
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      #textContent {
+        overflow: auto;
+        height: 100%;
+      }
+    </style>
+    <script src="../libs/bootstrap5/bootstrap.bundle.min.js"></script>
+    <script src="../libs/dompurify/dist/purify.min.js"></script>
+    <script src="../libs/i18next/i18next.min.js"></script>
+    <script src="../common/common.js"></script>
+    <script>
+      const filePath = getParameterByName('file');
+      let locale = getParameterByName('locale');
+      if (locale === 'en') {
+        locale = 'en_US';
+      }
+      document.addEventListener('readystatechange', () => {
+        if (document.readyState === 'complete') {
+          sendMessageToHost({
+            command: 'loadDefaultTextContent',
+            preview: true
+          });
+
+          insertAboutDialog(
+            'https://docs.tagspaces.org/extensions/text-viewer'
+          );
+
+          insertPrintMenuItem();
+
+          initI18N(locale, 'ns.extension.json');
+        }
+      });
+
+      function setContent(content, fileDir) {
+        // Cutting preview content 10kb
+        const previewSize = 1024 * 10;
+        // console.log('Content size: ' + content.length);
+
+        // removing the script tags from the content
+        let cleanedContent = content
+          .toString()
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+        if (cleanedContent.length > previewSize) {
+          cleanedContent = cleanedContent.substring(0, previewSize);
+        }
+
+        document.getElementById(
+          'textContentArea'
+        ).textContent = DOMPurify.sanitize(cleanedContent);
+      }
+    </script>
+  </head>
+  <body>
+    <div
+      style="padding: 5px; background-color: transparent; width: 100%; height: 100%;"
+      class="flexLayoutVertical"
+      id="mainLayout"
+    >
+      <div
+        style="margin-left: auto; margin-right: auto; font-size: 14px;"
+        data-i18n="fileContentPreview"
+      ></div>
+      <textarea
+        id="textContentArea"
+        readonly="readonly"
+        style="background-color: transparent; color: gray; padding: 5px; overflow: auto; height: 97%; width: 100%; font-size: 13px; margin: 0px;  border: gray solid 1px; border-radius: 4px;"
+        class="flexMaxHeight"
+      ></textarea>
+    </div>
+    <div id="aboutDialogPlaceholder"></div>
+    <div id="extFabMenu" class="btn-group dropup-center dropup">
+      <button
+        type="button"
+        class="btn btn-primary btn-lg"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+      >
+        <svg
+          class="bi"
+          width="24"
+          height="24"
+          focusable="false"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+          ></path>
+        </svg>
+      </button>
+      <ul class="dropdown-menu">
+        <li id="printMenuItemPlaceholder"></li>
+        <li><hr class="dropdown-divider" /></li>
+        <li id="aboutMenuItemPlaceholder"></li>
+      </ul>
+    </div>
+  </body>
+</html>
